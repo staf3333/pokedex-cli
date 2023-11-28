@@ -1,13 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 )
 
 // main will be the thing that actually runs the command
 
 // hint below
-// the below block of code creates a new struct called cliCommand which 
+// the below block of code creates a new struct called cliCommand which
 // we will we will map to string value that we read in from the buffer
 type cliCommand struct {
 	name        string
@@ -19,27 +21,64 @@ type cliCommand struct {
 // command matches that key, do whatever that function says to do
 // e.g. for "help" we might want the callback "commandHelp" to print a guide on 
 // how to use the pokedex
-return map[string]cliCommand{
-    "help": {
-        name:        "help",
-        description: "Displays a help message",
-        callback:    commandHelp,
-    },
-    "exit": {
-        name:        "exit",
-        description: "Exit the Pokedex",
-        callback:    commandExit,
-    },
+func getCommands() map[string]cliCommand {
+	return map[string]cliCommand{
+    	"help": {
+        	name:        "help",
+        	description: "Displays a help message",
+        	callback:    commandHelp,
+    	},
+    	"exit": {
+        	name:        "exit",
+        	description: "Exit the Pokedex",
+        	callback:    commandExit,
+    	},
+	}
+}
+
+func commandHelp() error {
+	// do what criteria says when help command is called
+	fmt.Println("\nWelcome to the Pokedex!")
+	fmt.Println("Usage:")
+	fmt.Println()
+	for _, command := range getCommands() {
+		fmt.Printf("%s: %s\n", command.name, command.description)
+	}
+
+	fmt.Println()
+	// if no errors, return nil
+	return nil
+}
+
+func commandExit() error {
+	fmt.Println("Exiting Pokedex")
+	os.Exit(0)
+	// if no errors, return nil
+	return nil
 }
 
 
 func main() {
 	for {
-		// block the for loop to wait for input
+		// Create new scanner to read from stdin
+		scanner := bufio.NewScanner(os.Stdin)
+
+		fmt.Print("Pokedex > ")
+
+		// read input line by line
+		for scanner.Scan() {
+			input := scanner.Text()
+			command, exists := getCommands()[input]
+			if exists {
+				err := command.callback()
+				if err != nil {
+					//handle error some type of way
+					fmt.Println("Error: ", err)
+				}
+				break
+			} else {
+				fmt.Println("Command does not exist")
+			}
+		}
 	}
-	// use infinite for loop to keep the REPL running
-	// at start of loop, block it and wait for some input
-	// when info is recieved, parse it and then execute a command
-	// Once command is finished, print output then go to the next iteration of the loop                 
-	fmt.Println("Hello, world!") 
 }
