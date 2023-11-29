@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 )
 
@@ -33,7 +35,50 @@ func getCommands() map[string]cliCommand {
         	description: "Exit the Pokedex",
         	callback:    commandExit,
     	},
+		"map": {
+			name: "map",
+			description: "Display names of 20 location areas",
+			callback: commandMap,
+		},
+		"mapb": {
+			name: "mapb",
+			description: "Display the previous 20 locations",
+			callback: commandMapb,
+		},
 	}
+}
+
+func getFromPokeAPI() {
+	// base url for PokeAPI: https://pokeapi.co/api/v2/{endpoint}/
+	// url for locations: https://pokeapi.co/api/v2/location/ 
+	// list by default contains 20 resources
+
+	// 
+	res, err := http.Get("https://pokeapi.co/api/v2/location/")
+	if err != nil {
+		fmt.Println("Error in api call")
+	}
+	// res contains req but use io.ReadAll to make code simpler 
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println("Error reading response body")
+		return
+	}
+	fmt.Println(string(body))
+}
+// displays the names of 20 location areas in the Pokemon world
+// each subsequent call to map should display the next 20 locations
+func commandMap() error {
+
+	return nil
+}
+
+// similar to map command, displays the previous 20 locations
+// suggests, need a way to keep track of the page that you're currently on
+func commandMapb() error {
+	
+	return nil
 }
 
 func commandHelp() error {
@@ -46,6 +91,7 @@ func commandHelp() error {
 	}
 
 	fmt.Println()
+	getFromPokeAPI()
 	// if no errors, return nil
 	return nil
 }

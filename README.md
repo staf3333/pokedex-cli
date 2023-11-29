@@ -96,6 +96,53 @@ func main() {
 }
 ```
 
+## Step 2: POKEAPI
+
+In this assignment, I'm tasked with making two commands that retrieve data for the PokeAPI and display it in cli
+
+### Building map command
+
+- First: add command to commandMap
+- Todo:
+
+  - figure out how to call api in Go
+
+    1. Create a function that calls api and prints the returned JSON
+
+    - expect api to return JSON of this form
+
+      ```json
+      {
+        "count": 248,
+        "next": "https://pokeapi.co/api/v2/ability/?limit=20&offset=20",
+        "previous": null,
+        "results": [
+          {
+            "name": "stench",
+            "url": "https://pokeapi.co/api/v2/ability/1/"
+          }
+        ]
+      }
+      ```
+
+  - figure out a way to store the data the api returns
+  - figure out a way to store the previous url so I'll be able to implemnt back functionality
+
+### Learnings
+
+#### Go HTTP Response Handling
+
+In Node.js (where I was coming from) apparently a lot of the underlying complexity of requests are extracted away (by high-level libraries like Express).
+
+Go, on the other hand, exposes a lot more of the underlying mechanics of web protocols! In reality, when you request to a server, you receive a stream of bytes
+In Go, when you receive a response, you actually get an `io.ReadCloser` stream in `res.Body`. You have to be the one to determine how to read the stream and interpret it's content!
+
+Why use `io.ReadAll`?
+
+Since the `res.Body` object is a _stream_, it does NOT come directly as a JSON object... You have to use `io.ReadAll` to actually read the stream completely into memory!
+
+Once the data is in memory, you can parse it into JSON if you want
+
 ## Glossary
 
 ### Tokens
