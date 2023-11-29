@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -48,6 +49,28 @@ func getCommands() map[string]cliCommand {
 	}
 }
 
+
+// Create separate structs for locations themselves
+// use capital names for struct field so the `encoding/json` package can access them
+// need to be able to marshall and unmarshal
+type Location struct {
+	Name string `json:"name"`
+	URL string `json:"url"`
+}
+
+// Struct for the JSON returned from the PokeAPI
+// apparently the strings next to each field in the struct provide metadata about how 
+// the fields of the struct should be handled
+// In context of JSON parsing and serialization, they define mapping between JSON keys and struct fields
+// Particularly useful when the JSON field names don't match the Go struct field names exactly
+// use upper case name if needed to be used across multiple packages
+type PokemonLocationResponse struct {
+	Count    int    `json:"count"`
+	Next     string `json:"next"`
+	Previous *string    `json:"previous"`
+	Results  []Location `json:"results"`
+}
+
 func getFromPokeAPI() {
 	// base url for PokeAPI: https://pokeapi.co/api/v2/{endpoint}/
 	// url for locations: https://pokeapi.co/api/v2/location/ 
@@ -61,11 +84,19 @@ func getFromPokeAPI() {
 	// res contains req but use io.ReadAll to make code simpler 
 	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
+	if res.StatusCode > 299 {
+		fmt.Printf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
+	}
 	if err != nil {
 		fmt.Println("Error reading response body")
 		return
 	}
-	fmt.Println(string(body))
+	apiResponse := PokemonLocationResponse{}
+	err = json.Unmarshal(body, &apiResponse)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(apiResponse.Count)
 }
 // displays the names of 20 location areas in the Pokemon world
 // each subsequent call to map should display the next 20 locations

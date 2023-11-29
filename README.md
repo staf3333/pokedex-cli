@@ -126,6 +126,7 @@ In this assignment, I'm tasked with making two commands that retrieve data for t
       ```
 
   - figure out a way to store the data the api returns
+    - need to create some type of struct to store each location!
   - figure out a way to store the previous url so I'll be able to implemnt back functionality
 
 ### Learnings
@@ -142,6 +143,19 @@ Why use `io.ReadAll`?
 Since the `res.Body` object is a _stream_, it does NOT come directly as a JSON object... You have to use `io.ReadAll` to actually read the stream completely into memory!
 
 Once the data is in memory, you can parse it into JSON if you want
+
+#### Parsing JSON in Go
+
+In order to parse the JSON for the PokeAPI, first need to create structs to save the json into.
+
+Then you actually have to unmarshal the JSON to the corresponding struct
+
+##### What is marshalling and unmarshalling?
+
+- **Marshalling** - Act of converting a Go data structure into valid JSON
+- **Unmarshalling** - Act of parsing a valid JSON string into a data structure in Go
+
+In other languages, _marshalling_ is known as "serializing" and _unmarshalling_ is known as "deserializing"
 
 ## Glossary
 
