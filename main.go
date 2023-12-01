@@ -2,11 +2,10 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
+
+	"github.com/staf3333/pokedexcli/internal/pokeapi"
 )
 
 // main will be the thing that actually runs the command
@@ -17,102 +16,79 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(*config) error
 }
+
 // the below is an example structure of a map that maps strings to cliCommands
-// the callbacks are the functions that I will want to create so that if a 
+// the callbacks are the functions that I will want to create so that if a
 // command matches that key, do whatever that function says to do
-// e.g. for "help" we might want the callback "commandHelp" to print a guide on 
+// e.g. for "help" we might want the callback "commandHelp" to print a guide on
 // how to use the pokedex
 func getCommands() map[string]cliCommand {
 	return map[string]cliCommand{
-    	"help": {
-        	name:        "help",
-        	description: "Displays a help message",
-        	callback:    commandHelp,
-    	},
-    	"exit": {
-        	name:        "exit",
-        	description: "Exit the Pokedex",
-        	callback:    commandExit,
-    	},
+		"help": {
+			name:        "help",
+			description: "Displays a help message",
+			callback:    commandHelp,
+		},
+		"exit": {
+			name:        "exit",
+			description: "Exit the Pokedex",
+			callback:    commandExit,
+		},
 		"map": {
-			name: "map",
+			name:        "map",
 			description: "Display names of 20 location areas",
-			callback: commandMap,
+			callback:    commandMap,
 		},
 		"mapb": {
-			name: "mapb",
+			name:        "mapb",
 			description: "Display the previous 20 locations",
-			callback: commandMapb,
+			callback:    commandMapb,
 		},
 	}
 }
 
 
-// Create separate structs for locations themselves
-// use capital names for struct field so the `encoding/json` package can access them
-// need to be able to marshall and unmarshal
-type Location struct {
-	Name string `json:"name"`
-	URL string `json:"url"`
+
+
+// need some way to keep track of what is the current page, next page, and prev page
+// to do this, define struct to hold the next and prev page. Then pass refs (pointer) to 
+// these structs when you call the respective commands
+// Commands need to accept a pointer to a config struct as a param!
+// config struct contains the next and previous urls
+type config struct {
+	Previous *string
+	Next string
 }
 
-// Struct for the JSON returned from the PokeAPI
-// apparently the strings next to each field in the struct provide metadata about how 
-// the fields of the struct should be handled
-// In context of JSON parsing and serialization, they define mapping between JSON keys and struct fields
-// Particularly useful when the JSON field names don't match the Go struct field names exactly
-// use upper case name if needed to be used across multiple packages
-type PokemonLocationResponse struct {
-	Count    int    `json:"count"`
-	Next     string `json:"next"`
-	Previous *string    `json:"previous"`
-	Results  []Location `json:"results"`
-}
-
-func getFromPokeAPI() {
-	// base url for PokeAPI: https://pokeapi.co/api/v2/{endpoint}/
-	// url for locations: https://pokeapi.co/api/v2/location/ 
-	// list by default contains 20 resources
-
-	// 
-	res, err := http.Get("https://pokeapi.co/api/v2/location/")
-	if err != nil {
-		fmt.Println("Error in api call")
-	}
-	// res contains req but use io.ReadAll to make code simpler 
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	if res.StatusCode > 299 {
-		fmt.Printf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
-	}
-	if err != nil {
-		fmt.Println("Error reading response body")
-		return
-	}
-	apiResponse := PokemonLocationResponse{}
-	err = json.Unmarshal(body, &apiResponse)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(apiResponse.Count)
-}
 // displays the names of 20 location areas in the Pokemon world
 // each subsequent call to map should display the next 20 locations
-func commandMap() error {
-
+func commandMap(config *config) error {
+	nextURL := config.Next
+	previous, next := pokeapi.GetFromPokeAPI(nextURL)
+	config.Previous = previous
+	config.Next = next
 	return nil
 }
 
 // similar to map command, displays the previous 20 locations
 // suggests, need a way to keep track of the page that you're currently on
-func commandMapb() error {
+func commandMapb(config *config) error {
+	if config.Previous == nil {
+		fmt.Println("No previous page available")
+		return nil
+	}
 	
+	// Derefence pointer to get the string value
+	previousURL := *config.Previous
+	previous, next := pokeapi.GetFromPokeAPI(previousURL)
+	config.Previous = previous
+	config.Next = next
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(config *config) error {
 	// do what criteria says when help command is called
 	fmt.Println("\nWelcome to the Pokedex!")
 	fmt.Println("Usage:")
@@ -122,20 +98,23 @@ func commandHelp() error {
 	}
 
 	fmt.Println()
-	getFromPokeAPI()
+	// getFromPokeAPI()
 	// if no errors, return nil
 	return nil
 }
 
-func commandExit() error {
+func commandExit(config *config) error {
 	fmt.Println("Exiting Pokedex")
 	os.Exit(0)
 	// if no errors, return nil
 	return nil
 }
 
-
 func main() {
+	pageTracker := config{ 
+		Next: "https://pokeapi.co/api/v2/location/?limit=20",
+		Previous: nil,
+	}
 	for {
 		// Create new scanner to read from stdin
 		scanner := bufio.NewScanner(os.Stdin)
@@ -147,7 +126,7 @@ func main() {
 			input := scanner.Text()
 			command, exists := getCommands()[input]
 			if exists {
-				err := command.callback()
+				err := command.callback(&pageTracker)
 				if err != nil {
 					//handle error some type of way
 					fmt.Println("Error: ", err)
