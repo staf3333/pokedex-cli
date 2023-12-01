@@ -58,33 +58,33 @@ func getCommands() map[string]cliCommand {
 // Commands need to accept a pointer to a config struct as a param!
 // config struct contains the next and previous urls
 type config struct {
-	Previous *string
-	Next string
+	previous *string
+	next string
 }
 
 // displays the names of 20 location areas in the Pokemon world
 // each subsequent call to map should display the next 20 locations
 func commandMap(config *config) error {
-	nextURL := config.Next
+	nextURL := config.next
 	previous, next := pokeapi.GetFromPokeAPI(nextURL)
-	config.Previous = previous
-	config.Next = next
+	config.previous = previous
+	config.next = next
 	return nil
 }
 
 // similar to map command, displays the previous 20 locations
 // suggests, need a way to keep track of the page that you're currently on
 func commandMapb(config *config) error {
-	if config.Previous == nil {
+	if config.previous == nil {
 		fmt.Println("No previous page available")
 		return nil
 	}
 	
 	// Derefence pointer to get the string value
-	previousURL := *config.Previous
+	previousURL := *config.previous
 	previous, next := pokeapi.GetFromPokeAPI(previousURL)
-	config.Previous = previous
-	config.Next = next
+	config.previous = previous
+	config.next = next
 	return nil
 }
 
@@ -112,8 +112,8 @@ func commandExit(config *config) error {
 
 func main() {
 	pageTracker := config{ 
-		Next: "https://pokeapi.co/api/v2/location/?limit=20",
-		Previous: nil,
+		next: "https://pokeapi.co/api/v2/location/?limit=20",
+		previous: nil,
 	}
 	for {
 		// Create new scanner to read from stdin
