@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 
@@ -49,17 +50,14 @@ func getCommands() map[string]cliCommand {
 	}
 }
 
-
-
-
 // need some way to keep track of what is the current page, next page, and prev page
-// to do this, define struct to hold the next and prev page. Then pass refs (pointer) to 
+// to do this, define struct to hold the next and prev page. Then pass refs (pointer) to
 // these structs when you call the respective commands
 // Commands need to accept a pointer to a config struct as a param!
 // config struct contains the next and previous urls
 type config struct {
 	previous *string
-	next string
+	next     string
 }
 
 // displays the names of 20 location areas in the Pokemon world
@@ -76,10 +74,9 @@ func commandMap(config *config) error {
 // suggests, need a way to keep track of the page that you're currently on
 func commandMapb(config *config) error {
 	if config.previous == nil {
-		fmt.Println("No previous page available")
-		return nil
+		return errors.New("You're on the first page")
 	}
-	
+
 	// Derefence pointer to get the string value
 	previousURL := *config.previous
 	previous, next := pokeapi.GetFromPokeAPI(previousURL)
@@ -111,8 +108,8 @@ func commandExit(config *config) error {
 }
 
 func main() {
-	pageTracker := config{ 
-		next: "https://pokeapi.co/api/v2/location/?limit=20",
+	pageTracker := config{
+		next:     "https://pokeapi.co/api/v2/location/?limit=20",
 		previous: nil,
 	}
 	for {
