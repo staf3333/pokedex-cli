@@ -16,11 +16,13 @@ type Cache struct {
 	interval time.Duration
 }
 
-func NewCache(interval time.Duration) Cache {
-	return Cache{
+func NewCache(interval time.Duration) *Cache {
+	c := &Cache{
 		cacheMap: make(map[string]cacheEntry),
 		interval: interval,
 	}
+	go c.reapLoop()
+	return c
 }
 
 func (c *Cache) Add(key string, val []byte) {
@@ -44,5 +46,24 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 }
 
 func (c *Cache) reapLoop() {
-	
+	// c.interval
+	// implement a time.ticker to figure out wtf to do
+	// time.NewTicker returns a new Ticker containing a channel that will send the current time on 
+	// channel after each tick. Period of ticks is specified by duration arg
+	ticker := time.NewTicker(c.interval)
+	defer ticker.Stop()
+	// use for range loop for idiomatic handling of the ticker channel
+	// automatically reads values from the channel until it is closed -> don't have to add
+	// extra logic to check if channel is closed
+	for t := range ticker.C {
+		// here we want to range through the entries in the cache map, and compare the createdAt 
+		// time to the t recieved from the ticker
+		c.mu.Lock()
+		for k, v := range c.cacheMap {
+			if t.Sub(v.createdAt) > c.interval {
+				delete(c.cacheMap, k)
+			}
+		}
+		c.mu.Unlock()
+	}
 }
