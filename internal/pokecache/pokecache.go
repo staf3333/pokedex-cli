@@ -46,7 +46,6 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 }
 
 func (c *Cache) reapLoop() {
-	// implement a time.ticker to figure out wtf to do
 	// time.NewTicker returns a new Ticker containing a channel that will send the current time on 
 	// channel after each tick. Period of ticks is specified by duration arg
 	ticker := time.NewTicker(c.interval)
