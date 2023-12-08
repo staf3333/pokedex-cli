@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/staf3333/pokedexcli/internal/pokecache"
 )
 
 // Struct for the JSON returned from the PokeAPI
@@ -28,12 +30,23 @@ type Location struct {
 	URL  string `json:"url"`
 }
 
-func GetFromPokeAPI(url string) (previous *string, next string) {
+// implementing Cache:
+// usual approach: check cache for requested resource. If found in cache, return it to client
+// else, proceed down whatever logic you have to get the data!
+
+func GetFromPokeAPI(url string, cache *pokecache.Cache) (previous *string, next string) {
 	// base url for PokeAPI: https://pokeapi.co/api/v2/{endpoint}/
 	// url for locations: https://pokeapi.co/api/v2/location/
 	// list by default contains 20 resources
 
-	//
+	// Add logic here to get data from cache if it's already in there
+	// questions I have: how to store the data in the Cache (store string? Can you store the entire struct?)
+	// want to store entire data in cache! 
+	// so for a given url, check if response in the cache, if not, do the req logic (and add the req to cache)
+	// can keep the unmarshalling logic
+	cachedBody, ok := cache.Get(url)
+	if ok {	
+	}
 	res, err := http.Get(url)
 	if err != nil {
 		fmt.Println("Error in api call")
@@ -48,6 +61,7 @@ func GetFromPokeAPI(url string) (previous *string, next string) {
 		fmt.Println("Error reading response body")
 		return
 	}
+	// apiResponse is what we want to cache for a given url!
 	apiResponse := PokemonLocationResponse{}
 	err = json.Unmarshal(body, &apiResponse)
 	if err != nil {

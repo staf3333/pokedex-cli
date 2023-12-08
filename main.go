@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/staf3333/pokedexcli/internal/pokeapi"
+	"github.com/staf3333/pokedexcli/internal/pokecache"
 )
 
 // main will be the thing that actually runs the command
@@ -17,7 +18,7 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*config, *pokecache.Cache) error
 }
 
 // the below is an example structure of a map that maps strings to cliCommands
@@ -62,9 +63,9 @@ type config struct {
 
 // displays the names of 20 location areas in the Pokemon world
 // each subsequent call to map should display the next 20 locations
-func commandMap(config *config) error {
+func commandMap(config *config, cache *pokecache.Cache) error {
 	nextURL := config.next
-	previous, next := pokeapi.GetFromPokeAPI(nextURL)
+	previous, next := pokeapi.GetFromPokeAPI(nextURL, cache)
 	config.previous = previous
 	config.next = next
 	return nil
@@ -72,20 +73,20 @@ func commandMap(config *config) error {
 
 // similar to map command, displays the previous 20 locations
 // suggests, need a way to keep track of the page that you're currently on
-func commandMapb(config *config) error {
+func commandMapb(config *config, cache *pokecache.Cache) error {
 	if config.previous == nil {
 		return errors.New("You're on the first page")
 	}
 
 	// Derefence pointer to get the string value
 	previousURL := *config.previous
-	previous, next := pokeapi.GetFromPokeAPI(previousURL)
+	previous, next := pokeapi.GetFromPokeAPI(previousURL, cache)
 	config.previous = previous
 	config.next = next
 	return nil
 }
 
-func commandHelp(config *config) error {
+func commandHelp(config *config, cache *pokecache.Cache) error {
 	// do what criteria says when help command is called
 	fmt.Println("\nWelcome to the Pokedex!")
 	fmt.Println("Usage:")
@@ -100,7 +101,7 @@ func commandHelp(config *config) error {
 	return nil
 }
 
-func commandExit(config *config) error {
+func commandExit(config *config, cache *pokecache.Cache) error {
 	fmt.Println("Exiting Pokedex")
 	os.Exit(0)
 	// if no errors, return nil
@@ -112,6 +113,7 @@ func main() {
 		next:     "https://pokeapi.co/api/v2/location/?limit=20",
 		previous: nil,
 	}
+	var cache = pokecache.NewCache()
 	for {
 		// Create new scanner to read from stdin
 		scanner := bufio.NewScanner(os.Stdin)
@@ -123,7 +125,7 @@ func main() {
 			input := scanner.Text()
 			command, exists := getCommands()[input]
 			if exists {
-				err := command.callback(&pageTracker)
+				err := command.callback(&pageTracker, &cache)
 				if err != nil {
 					//handle error some type of way
 					fmt.Println("Error: ", err)
