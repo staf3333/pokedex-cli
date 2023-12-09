@@ -65,7 +65,8 @@ type config struct {
 // each subsequent call to map should display the next 20 locations
 func commandMap(config *config, cache *pokecache.Cache) error {
 	nextURL := config.next
-	previous, next := pokeapi.GetFromPokeAPI(nextURL, cache)
+	apiResponse := pokeapi.GetData(nextURL, cache)
+	previous, next := apiResponse.Previous, apiResponse.Next
 	config.previous = previous
 	config.next = next
 	return nil
@@ -80,7 +81,9 @@ func commandMapb(config *config, cache *pokecache.Cache) error {
 
 	// Derefence pointer to get the string value
 	previousURL := *config.previous
-	previous, next := pokeapi.GetFromPokeAPI(previousURL, cache)
+	apiResponse := pokeapi.GetData(previousURL, cache)
+	previous, next := apiResponse.Previous, apiResponse.Next
+	// just return entire body here?
 	config.previous = previous
 	config.next = next
 	return nil
@@ -113,7 +116,7 @@ func main() {
 		next:     "https://pokeapi.co/api/v2/location/?limit=20",
 		previous: nil,
 	}
-	var cache = pokecache.NewCache()
+	cache := pokecache.NewCache(15)
 	for {
 		// Create new scanner to read from stdin
 		scanner := bufio.NewScanner(os.Stdin)
@@ -125,7 +128,7 @@ func main() {
 			input := scanner.Text()
 			command, exists := getCommands()[input]
 			if exists {
-				err := command.callback(&pageTracker, &cache)
+				err := command.callback(&pageTracker, cache)
 				if err != nil {
 					//handle error some type of way
 					fmt.Println("Error: ", err)
