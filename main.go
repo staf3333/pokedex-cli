@@ -19,7 +19,7 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config, *pokecache.Cache) error
+	callback    func(*config, *pokecache.Cache, string) error
 }
 
 // the below is an example structure of a map that maps strings to cliCommands
@@ -49,6 +49,11 @@ func getCommands() map[string]cliCommand {
 			description: "Display the previous 20 locations",
 			callback:    commandMapb,
 		},
+		"explore": {
+			name: "explore <area_name>",
+			description: "Display pokemon in given area",
+			callback: commandExplore,
+		},
 	}
 }
 
@@ -64,7 +69,7 @@ type config struct {
 
 // displays the names of 20 location areas in the Pokemon world
 // each subsequent call to map should display the next 20 locations
-func commandMap(config *config, cache *pokecache.Cache) error {
+func commandMap(config *config, cache *pokecache.Cache, areaName string) error {
 	nextURL := config.next
 	apiResponse := pokeapi.GetData(nextURL, cache)
 	previous, next := apiResponse.Previous, apiResponse.Next
@@ -75,7 +80,7 @@ func commandMap(config *config, cache *pokecache.Cache) error {
 
 // similar to map command, displays the previous 20 locations
 // suggests, need a way to keep track of the page that you're currently on
-func commandMapb(config *config, cache *pokecache.Cache) error {
+func commandMapb(config *config, cache *pokecache.Cache, areaName string) error {
 	if config.previous == nil {
 		return errors.New("You're on the first page")
 	}
@@ -90,7 +95,12 @@ func commandMapb(config *config, cache *pokecache.Cache) error {
 	return nil
 }
 
-func commandHelp(config *config, cache *pokecache.Cache) error {
+func commandExplore(config *config, cache *pokecache.Cache, areaName string) error {
+	fmt.Println(areaName)
+	return nil
+}
+
+func commandHelp(config *config, cache *pokecache.Cache, areaName string) error {
 	// do what criteria says when help command is called
 	fmt.Println("\nWelcome to the Pokedex!")
 	fmt.Println("Usage:")
@@ -105,7 +115,7 @@ func commandHelp(config *config, cache *pokecache.Cache) error {
 	return nil
 }
 
-func commandExit(config *config, cache *pokecache.Cache) error {
+func commandExit(config *config, cache *pokecache.Cache, areaName string) error {
 	fmt.Println("Exiting Pokedex")
 	os.Exit(0)
 	// if no errors, return nil
@@ -127,9 +137,11 @@ func main() {
 		// read input line by line
 		for scanner.Scan() {
 			input := scanner.Text()
+			areaName := "test"
+			fmt.Println(input)
 			command, exists := getCommands()[input]
 			if exists {
-				err := command.callback(&pageTracker, cache)
+				err := command.callback(&pageTracker, cache, areaName)
 				if err != nil {
 					//handle error some type of way
 					fmt.Println("Error: ", err)
