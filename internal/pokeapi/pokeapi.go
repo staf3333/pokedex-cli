@@ -41,7 +41,9 @@ func GetData(url string, cache *pokecache.Cache) PokemonLocationResponse{
 	if !ok {		
 		body = getFromPokeAPI(url)
 		cache.Add(url, body)
-	} 
+	} else {
+		fmt.Println("Found data in cache!")
+	}
 	// apiResponse is what we want to cache for a given url!
 	apiResponse := PokemonLocationResponse{}
 	err := json.Unmarshal(body, &apiResponse)

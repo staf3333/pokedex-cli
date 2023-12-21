@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/staf3333/pokedexcli/internal/pokeapi"
 	"github.com/staf3333/pokedexcli/internal/pokecache"
@@ -116,7 +117,7 @@ func main() {
 		next:     "https://pokeapi.co/api/v2/location/?limit=20",
 		previous: nil,
 	}
-	cache := pokecache.NewCache(5)
+	cache := pokecache.NewCache(5 * time.Second)
 	for {
 		// Create new scanner to read from stdin
 		scanner := bufio.NewScanner(os.Stdin)
