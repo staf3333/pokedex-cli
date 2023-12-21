@@ -36,26 +36,21 @@ type Location struct {
 
 func GetData(url string, cache *pokecache.Cache) PokemonLocationResponse{
 	var body []byte
+	// attempt to get data from the Cache first, if not found in the cache, get from the API
 	body, ok := cache.Get(url)
-	// fmt.Println(body)
-	fmt.Println(ok)
-	if !ok {	
-		fmt.Println("not in cache!")
+	if !ok {		
 		body = getFromPokeAPI(url)
 		cache.Add(url, body)
-		// fmt.Println(cache)
-	} else {
-		fmt.Println("FOUND IN CACHE!")
-	}
+	} 
 	// apiResponse is what we want to cache for a given url!
 	apiResponse := PokemonLocationResponse{}
 	err := json.Unmarshal(body, &apiResponse)
 	if err != nil {			
 		fmt.Println(err)
 	}
-	// for _, location := range apiResponse.Results {
-	// 	fmt.Println(location.Name)
-	// }
+	for _, location := range apiResponse.Results {
+		fmt.Println(location.Name)
+	}
 	return apiResponse
 }
 

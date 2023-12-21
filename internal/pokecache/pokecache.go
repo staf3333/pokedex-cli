@@ -1,7 +1,6 @@
 package pokecache
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -49,8 +48,8 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 func (c *Cache) reapLoop() {
 	// time.NewTicker returns a new Ticker containing a channel that will send the current time on 
 	// channel after each tick. Period of ticks is specified by duration arg
-	ticker := time.NewTicker(c.interval)
-	fmt.Println("reaping from cache!")
+	// have to specify time interval in seconds b/c c.interval doesn't convert to second automatically
+	ticker := time.NewTicker(c.interval * time.Second)
 	defer ticker.Stop()
 	// use for range loop for idiomatic handling of the ticker channel
 	// automatically reads values from the channel until it is closed -> don't have to add
@@ -60,7 +59,7 @@ func (c *Cache) reapLoop() {
 		// time to the t recieved from the ticker
 		c.mu.Lock()
 		for k, v := range c.cacheMap {
-			if t.Sub(v.createdAt) > c.interval {
+			if t.Sub(v.createdAt) > c.interval * time.Second {
 				delete(c.cacheMap, k)
 			}
 		}

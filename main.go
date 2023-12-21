@@ -116,7 +116,7 @@ func main() {
 		next:     "https://pokeapi.co/api/v2/location/?limit=20",
 		previous: nil,
 	}
-	cache := pokecache.NewCache(15)
+	cache := pokecache.NewCache(5)
 	for {
 		// Create new scanner to read from stdin
 		scanner := bufio.NewScanner(os.Stdin)
