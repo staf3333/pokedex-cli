@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/staf3333/pokedexcli/internal/pokeapi"
@@ -71,8 +73,16 @@ type config struct {
 // each subsequent call to map should display the next 20 locations
 func commandMap(config *config, cache *pokecache.Cache, areaName string) error {
 	nextURL := config.next
-	apiResponse := pokeapi.GetData(nextURL, cache)
-	previous, next := apiResponse.Previous, apiResponse.Next
+	locationResponse := pokeapi.PokemonLocationResponse{}
+	body := pokeapi.GetData(nextURL, cache)
+	err := json.Unmarshal(body, &locationResponse)
+	if err != nil {			
+		fmt.Println(err)
+	}
+	for _, location := range locationResponse.Results {
+		fmt.Println(location.Name)
+	}
+	previous, next := locationResponse.Previous, locationResponse.Next
 	config.previous = previous
 	config.next = next
 	return nil
@@ -82,21 +92,44 @@ func commandMap(config *config, cache *pokecache.Cache, areaName string) error {
 // suggests, need a way to keep track of the page that you're currently on
 func commandMapb(config *config, cache *pokecache.Cache, areaName string) error {
 	if config.previous == nil {
-		return errors.New("You're on the first page")
+		return errors.New("you're on the first page")
 	}
 
 	// Derefence pointer to get the string value
 	previousURL := *config.previous
-	apiResponse := pokeapi.GetData(previousURL, cache)
-	previous, next := apiResponse.Previous, apiResponse.Next
-	// just return entire body here?
+	locationResponse := pokeapi.PokemonLocationResponse{}
+	body := pokeapi.GetData(previousURL, cache)
+	err := json.Unmarshal(body, &locationResponse)
+	if err != nil {			
+		fmt.Println(err)
+	}
+	for _, location := range locationResponse.Results {
+		fmt.Println(location.Name)
+	}
+	previous, next := locationResponse.Previous, locationResponse.Next
 	config.previous = previous
 	config.next = next
 	return nil
 }
 
 func commandExplore(config *config, cache *pokecache.Cache, areaName string) error {
-	fmt.Println(areaName)
+	if areaName == "" {
+		fmt.Println("You need to enter a location area")
+		return errors.New("not enough arguments")
+	}
+	fmt.Printf("Exploring %v \n", areaName)
+	locationAreaResponse := pokeapi.PokemonLocationAreaResponse{}
+	areaURL := "https://pokeapi.co/api/v2/location-area/" + areaName
+	body := pokeapi.GetData(areaURL, cache)
+	err := json.Unmarshal(body, &locationAreaResponse)
+	if err != nil {
+		fmt.Println("Invalid LocationID")
+		return err
+	}
+	fmt.Println("Found Pokemon:")
+	for _, encounter := range locationAreaResponse.PokemonEncounters {
+		fmt.Printf("- %v \n", encounter.Pokemon.Name)
+	}
 	return nil
 }
 
@@ -110,8 +143,6 @@ func commandHelp(config *config, cache *pokecache.Cache, areaName string) error 
 	}
 
 	fmt.Println()
-	// getFromPokeAPI()
-	// if no errors, return nil
 	return nil
 }
 
@@ -120,6 +151,14 @@ func commandExit(config *config, cache *pokecache.Cache, areaName string) error 
 	os.Exit(0)
 	// if no errors, return nil
 	return nil
+}
+
+func parseInput(input string) (string, string) {
+	parts := strings.SplitN(input, " ", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return parts[0], ""
 }
 
 func main() {
@@ -137,9 +176,9 @@ func main() {
 		// read input line by line
 		for scanner.Scan() {
 			input := scanner.Text()
-			areaName := "test"
-			fmt.Println(input)
-			command, exists := getCommands()[input]
+			// destructure command name and params from input
+			commandName, areaName := parseInput(input)
+			command, exists := getCommands()[commandName]
 			if exists {
 				err := command.callback(&pageTracker, cache, areaName)
 				if err != nil {
