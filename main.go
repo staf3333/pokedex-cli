@@ -67,6 +67,11 @@ func getCommands() map[string]cliCommand {
 			description: "Inspect a pokemon in pokedex",
 			callback: commandInspect,
 		},
+		"pokedex": {
+			name: "pokedex",
+			description: "inspect all pokemon in your pokedex",
+			callback: commandPokedex,
+		},
 	}
 }
 
@@ -218,6 +223,18 @@ func commandInspect(config *config, args ...string) error {
 	return nil
 }
 
+func commandPokedex(config *config, args ...string) error {
+	if len(config.pokedex) < 1 {
+		fmt.Println("No pokemon in pokedex")
+		return errors.New("no pokemon captured")
+	}
+	fmt.Println("Your Pokedex:")
+	for _, pokemon := range(config.pokedex) {
+		fmt.Printf(" -%s \n", pokemon.Name)
+	}
+	return nil
+}
+
 func commandHelp(config *config, args ...string) error {
 	// do what criteria says when help command is called
 	fmt.Println("\nWelcome to the Pokedex!")
@@ -274,6 +291,7 @@ func main() {
 				break
 			} else {
 				fmt.Println("Command does not exist")
+				break
 			}
 		}
 	}
