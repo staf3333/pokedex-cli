@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -21,7 +22,7 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config, *pokecache.Cache, string) error
+	callback    func(*config, ...string) error
 }
 
 // the below is an example structure of a map that maps strings to cliCommands
@@ -56,6 +57,16 @@ func getCommands() map[string]cliCommand {
 			description: "Display pokemon in given area",
 			callback: commandExplore,
 		},
+		"catch": {
+			name: "catch <pokemon_name>",
+			description: "Capture a pokemon",
+			callback: commandCatch,
+		},
+		"inspect": {
+			name: "inspect <pokemon_name>",
+			description: "Inspect a pokemon in pokedex",
+			callback: commandInspect,
+		},
 	}
 }
 
@@ -67,17 +78,20 @@ func getCommands() map[string]cliCommand {
 type config struct {
 	previous *string
 	next     string
+	cache pokecache.Cache
+	pokedex map[string]pokeapi.PokeAPIPokemonResponse
 }
 
 // displays the names of 20 location areas in the Pokemon world
 // each subsequent call to map should display the next 20 locations
-func commandMap(config *config, cache *pokecache.Cache, areaName string) error {
+func commandMap(config *config, args ...string) error {
 	nextURL := config.next
-	locationResponse := pokeapi.PokemonLocationResponse{}
-	body := pokeapi.GetData(nextURL, cache)
+	locationResponse := pokeapi.PokeAPILocationResponse{}
+	body := pokeapi.GetData(nextURL, &config.cache)
 	err := json.Unmarshal(body, &locationResponse)
 	if err != nil {			
-		fmt.Println(err)
+		fmt.Println("error with API request")
+		return err
 	}
 	for _, location := range locationResponse.Results {
 		fmt.Println(location.Name)
@@ -90,18 +104,19 @@ func commandMap(config *config, cache *pokecache.Cache, areaName string) error {
 
 // similar to map command, displays the previous 20 locations
 // suggests, need a way to keep track of the page that you're currently on
-func commandMapb(config *config, cache *pokecache.Cache, areaName string) error {
+func commandMapb(config *config, args ...string) error {
 	if config.previous == nil {
 		return errors.New("you're on the first page")
 	}
 
 	// Derefence pointer to get the string value
 	previousURL := *config.previous
-	locationResponse := pokeapi.PokemonLocationResponse{}
-	body := pokeapi.GetData(previousURL, cache)
+	locationResponse := pokeapi.PokeAPILocationResponse{}
+	body := pokeapi.GetData(previousURL, &config.cache)
 	err := json.Unmarshal(body, &locationResponse)
 	if err != nil {			
-		fmt.Println(err)
+		fmt.Println("Invalid URL")
+		return err
 	}
 	for _, location := range locationResponse.Results {
 		fmt.Println(location.Name)
@@ -112,15 +127,20 @@ func commandMapb(config *config, cache *pokecache.Cache, areaName string) error 
 	return nil
 }
 
-func commandExplore(config *config, cache *pokecache.Cache, areaName string) error {
-	if areaName == "" {
+func commandExplore(config *config, args ...string) error {
+	if len(args) < 1 {
 		fmt.Println("You need to enter a location area")
 		return errors.New("not enough arguments")
 	}
+	if len(args) > 1 {
+		fmt.Println("Only one location may be accepted")
+		return errors.New("too many arguments")
+	}
+	areaName := args[0]
 	fmt.Printf("Exploring %v \n", areaName)
-	locationAreaResponse := pokeapi.PokemonLocationAreaResponse{}
+	locationAreaResponse := pokeapi.PokeAPILocationAreaResponse{}
 	areaURL := "https://pokeapi.co/api/v2/location-area/" + areaName
-	body := pokeapi.GetData(areaURL, cache)
+	body := pokeapi.GetData(areaURL, &config.cache)
 	err := json.Unmarshal(body, &locationAreaResponse)
 	if err != nil {
 		fmt.Println("Invalid LocationID")
@@ -133,7 +153,72 @@ func commandExplore(config *config, cache *pokecache.Cache, areaName string) err
 	return nil
 }
 
-func commandHelp(config *config, cache *pokecache.Cache, areaName string) error {
+func commandCatch(config *config, args ...string) error {
+	if len(args) < 1 {
+		fmt.Println("You need to enter a pokemon to capture")
+		return errors.New("not enough arguments")
+	}
+	if len(args) > 1 {
+		fmt.Println("Can only capture one pokemon at a time")
+		return errors.New("too many arguments")
+	}
+	pokemonName := strings.ToLower(args[0])
+	pokemonUrl := "https://pokeapi.co/api/v2/pokemon/" + pokemonName
+	pokemonResponse := pokeapi.PokeAPIPokemonResponse{}
+	body := pokeapi.GetData(pokemonUrl, &config.cache)
+	err := json.Unmarshal(body, &pokemonResponse)
+	if err != nil {
+		fmt.Println("Invalid Pokemon Name")
+		return err
+	}
+	fmt.Printf("Throwing a pokeball at %s... \n", pokemonName)
+	catchChance := pokemonResponse.BaseExperience
+	catchRoll := rand.Intn(620)
+	if catchRoll > catchChance {
+		fmt.Printf("%s was caught! \n", pokemonName)
+		// add pokemon to pokedex
+		config.pokedex[pokemonName] = pokemonResponse
+	} else {
+		fmt.Printf("%s escaped! \n", pokemonName)
+	}
+	
+	return nil
+}
+
+func commandInspect(config *config, args ...string) error {
+	if len(args) < 1 {
+		fmt.Println("You need to choose a pokemon to inspect")
+		return errors.New("not enough arguments")
+	}
+	if len(args) > 1 {
+		fmt.Println("You can only inspect one pokemon at a time")
+		return errors.New("too many arguments")
+	}
+
+	pokemonName := strings.ToLower(args[0])
+	pokemon, ok := config.pokedex[pokemonName]
+	if !ok {
+		fmt.Println("you have not caught that pokemon")
+		return errors.New("pokemon not registered")
+	}
+	// print the name, height, weight, stats and type(s) of the Pokemon
+	fmt.Printf("Name: %s \n",pokemon.Name)
+	fmt.Printf("Height: %v \n", pokemon.Height)
+	fmt.Printf("Weight: %v \n", pokemon.Weight)
+	fmt.Println("Stats:")
+	for _, statList := range pokemon.Stats {
+		fmt.Printf(" -%s: %v \n", statList.Stat.Name, statList.BaseStat)
+	}
+
+	fmt.Println("Types:")
+	for _, typeList := range pokemon.Types {
+		fmt.Printf(" -%s \n", typeList.Type.Name)
+	}
+
+	return nil
+}
+
+func commandHelp(config *config, args ...string) error {
 	// do what criteria says when help command is called
 	fmt.Println("\nWelcome to the Pokedex!")
 	fmt.Println("Usage:")
@@ -146,27 +231,28 @@ func commandHelp(config *config, cache *pokecache.Cache, areaName string) error 
 	return nil
 }
 
-func commandExit(config *config, cache *pokecache.Cache, areaName string) error {
+func commandExit(config *config, args ...string) error {
 	fmt.Println("Exiting Pokedex")
 	os.Exit(0)
 	// if no errors, return nil
 	return nil
 }
 
-func parseInput(input string) (string, string) {
-	parts := strings.SplitN(input, " ", 2)
+func parseInput(input string) (string, []string) {
+	parts := strings.Split(input, " ")
 	if len(parts) == 2 {
-		return parts[0], parts[1]
+		return parts[0], parts[1:]
 	}
-	return parts[0], ""
+	return parts[0], nil
 }
 
 func main() {
-	pageTracker := config{
+	config := config{
 		next:     "https://pokeapi.co/api/v2/location/?limit=20",
 		previous: nil,
+		cache: *pokecache.NewCache(100 * time.Second),
+		pokedex: map[string]pokeapi.PokeAPIPokemonResponse{},
 	}
-	cache := pokecache.NewCache(5 * time.Second)
 	for {
 		// Create new scanner to read from stdin
 		scanner := bufio.NewScanner(os.Stdin)
@@ -177,10 +263,10 @@ func main() {
 		for scanner.Scan() {
 			input := scanner.Text()
 			// destructure command name and params from input
-			commandName, areaName := parseInput(input)
+			commandName, args := parseInput(input)
 			command, exists := getCommands()[commandName]
 			if exists {
-				err := command.callback(&pageTracker, cache, areaName)
+				err := command.callback(&config, args...)
 				if err != nil {
 					//handle error some type of way
 					fmt.Println("Error: ", err)
